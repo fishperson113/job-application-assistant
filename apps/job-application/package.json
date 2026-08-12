@@ -1,0 +1,15 @@
+{
+  "name": "@job-application/assistant",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": { "dev": "tsx src/main.ts", "typecheck": "tsc --noEmit", "test": "vitest run --passWithNoTests" },
+  "dependencies": {
+    "@corsair-platform/client": "^0.1.0",
+    "@corsair-platform/shared-types": "^0.1.0",
+    "@job-application/ai": "workspace:*",
+    "hono": "^4.6.0",
+    "zod": "^3.25.0",
+    "pino": "^9.0.0"
+  }
+}

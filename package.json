@@ -1,0 +1,21 @@
+{
+  "name": "job-application-assistant",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Personal job application workload consuming Corsair Platform.",
+  "type": "module",
+  "packageManager": "npm@11.3.0",
+  "workspaces": ["apps/*", "packages/*", "services/*"],
+  "scripts": {
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "dev:jobs": "npm --workspace @job-application/assistant run dev"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  }
+}

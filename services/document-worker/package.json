@@ -1,0 +1,8 @@
+{
+  "name": "@agent-platform/document-worker",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": { "dev": "tsx src/main.ts", "typecheck": "tsc --noEmit", "test": "vitest run --passWithNoTests" },
+  "dependencies": { "@agent-platform/config": "workspace:*", "pino": "^9.0.0" }
+}
