@@ -7,7 +7,7 @@
   "dependencies": {
     "@corsair-platform/client": "^0.1.0",
     "@corsair-platform/shared-types": "^0.1.0",
-    "@job-application/ai": "workspace:*",
+    "@job-application/ai": "*",
     "hono": "^4.6.0",
     "zod": "^3.25.0",
     "pino": "^9.0.0"
