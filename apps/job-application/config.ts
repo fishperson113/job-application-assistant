@@ -8,6 +8,7 @@ const telegramConnectionId = secret<"TELEGRAM_CONNECTION_ID">("TELEGRAM_CONNECTI
 const googleConnectionId = secret<"GOOGLE_CONNECTION_ID">("GOOGLE_CONNECTION_ID");
 const trackerSpreadsheetId = secret<"TRACKER_SPREADSHEET_ID">("TRACKER_SPREADSHEET_ID");
 const ownerChatId = secret<"OWNER_CHAT_ID">("OWNER_CHAT_ID");
+const openaiApiKey = secret<"OPENAI_API_KEY">("OPENAI_API_KEY");
 
 export interface WorkloadConfig {
   corsairUrl: string;
@@ -16,6 +17,7 @@ export interface WorkloadConfig {
   googleConnectionId: string;
   trackerSpreadsheetId: string;
   ownerChatId: string;
+  openaiApiKey: string;
 }
 
 export function config(): WorkloadConfig {
@@ -26,5 +28,10 @@ export function config(): WorkloadConfig {
     googleConnectionId: googleConnectionId(),
     trackerSpreadsheetId: trackerSpreadsheetId(),
     ownerChatId: ownerChatId(),
+    openaiApiKey: openaiApiKey(),
   };
 }
+
+// LLM model for the agent pipeline. Change here if your OpenAI key has access
+// to a different model.
+export const OPENAI_MODEL = "gpt-4o-mini";

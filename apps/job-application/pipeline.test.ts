@@ -1,20 +1,28 @@
 import { describe, expect, it } from "vitest";
-import { analyzeJobDescription, buildCv, matchCandidate } from "./pipeline.js";
+import { cvFileName, stripHtml } from "./pipeline.js";
 
-describe("pipeline stubs", () => {
-  it("derives company from the URL host", () => {
-    const analysis = analyzeJobDescription("https://www.careers.acme.com/job/42");
-    expect(analysis.company).toBe("careers.acme.com");
-    expect(analysis.title).toContain("careers.acme.com");
+describe("stripHtml", () => {
+  it("drops scripts/styles and tags, decodes entities, collapses whitespace", () => {
+    const html = `<html><head><style>.x{color:red}</style></head><body>
+      <script>alert(1)</script>
+      <h1>Senior   Engineer</h1>
+      <p>Build&nbsp;things &amp; ship them &lt;fast&gt;</p>
+    </body></html>`;
+    const text = stripHtml(html);
+    expect(text).not.toContain("<h1>");
+    expect(text).not.toContain("<script");
+    expect(text).not.toContain("alert(1)");
+    expect(text).not.toContain("color:red");
+    expect(text).toContain("Senior Engineer");
+    expect(text).toContain("Build things & ship them <fast>");
   });
+});
 
-  it("builds a base64 CV artifact naming the company", () => {
-    const analysis = analyzeJobDescription("https://acme.com/job");
-    const cv = buildCv(analysis, matchCandidate(analysis));
-    expect(cv.mimeType).toBe("text/plain");
-    expect(cv.fileName).toContain("acme-com");
-    const decoded = Buffer.from(cv.contentBase64, "base64").toString("utf8");
-    expect(decoded).toContain("PLACEHOLDER CV");
-    expect(decoded).toContain("acme.com");
+describe("cvFileName", () => {
+  it("slugs the company and always ends in .md", () => {
+    expect(cvFileName("Acme, Inc.")).toBe("cv-acme-inc.md");
+    expect(cvFileName("careers.acme.com")).toBe("cv-careers-acme-com.md");
+    expect(cvFileName("")).toBe("cv-role.md");
+    expect(cvFileName("!!!")).toBe("cv-role.md");
   });
 });

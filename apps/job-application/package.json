@@ -3,6 +3,14 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "scripts": { "dev": "encore run", "typecheck": "tsc --noEmit", "test": "vitest run --passWithNoTests" },
-  "dependencies": { "encore.dev": "^1.57.11" }
+  "scripts": {
+    "dev": "encore run",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@openai/agents": "^0.15.0",
+    "encore.dev": "^1.57.11",
+    "zod": "^4.4.3"
+  }
 }
