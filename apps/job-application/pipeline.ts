@@ -35,10 +35,10 @@ export function stripHtml(html: string): string {
     .trim();
 }
 
-/** Sanitized CV file name for a company. */
+/** Sanitized CV PDF file name for a company. */
 export function cvFileName(company: string): string {
   const slug = company.replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "").toLowerCase() || "role";
-  return `cv-${slug}.md`;
+  return `cv-${slug}.pdf`;
 }
 
 /** Fetch a job posting and return bounded plain text for the analyst agent. */
@@ -49,14 +49,8 @@ export async function fetchJobText(url: string, maxChars = 8000): Promise<string
   return text.slice(0, maxChars);
 }
 
-/**
- * Canonical candidate profile the agents ground on. PLACEHOLDER — replace with
- * the owner's real profile/evidence (later: load from a candidate store). The
- * writer agent is instructed to invent nothing beyond what appears here.
- */
-export const CANDIDATE_PROFILE = `
-Name: (placeholder candidate)
-Summary: Software engineer. Replace this block with the owner's real profile,
-skills, experience, and evidence before relying on generated CVs.
-Skills: TypeScript, Node.js, cloud platforms.
-`.trim();
+/** Strip a Markdown/code fence if the model wrapped its LaTeX output in one. */
+export function unwrapCodeFence(text: string): string {
+  const fence = text.match(/^\s*```(?:latex|tex)?\s*\n([\s\S]*?)\n```\s*$/i);
+  return (fence ? fence[1]! : text).trim();
+}

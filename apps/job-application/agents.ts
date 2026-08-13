@@ -1,12 +1,13 @@
 import { Agent, run, setDefaultOpenAIKey } from "@openai/agents";
 import { z } from "zod";
 import { config, OPENAI_MODEL } from "./config.js";
-import { CANDIDATE_PROFILE, cvFileName, type GeneratedCv, type JobAnalysis, type MatchReport } from "./pipeline.js";
+import { cvFileName, unwrapCodeFence, type GeneratedCv, type JobAnalysis, type MatchReport } from "./pipeline.js";
+import { compileToPdf } from "./latex.js";
 
-// Multi-agent pipeline on the OpenAI Agents SDK: three specialized agents run
-// in sequence — Analyst (JD -> structure), Matcher (structure + candidate ->
-// fit), Writer (-> tailored CV). Deterministic orchestration; each agent has a
-// single role and typed (zod) output where structure matters.
+// Multi-agent pipeline on the OpenAI Agents SDK. Three specialized agents run in
+// sequence: Analyst (JD -> structure), Matcher (CV + structure -> fit), Writer
+// (tailor the owner's real cv.tex to the job). The owner's LaTeX CV is the only
+// evidence; agents must not fabricate anything not present in it.
 
 let keyConfigured = false;
 function ensureKey(): void {
@@ -16,6 +17,12 @@ function ensureKey(): void {
     setDefaultOpenAIKey(key);
     keyConfigured = true;
   }
+}
+
+function baseCv(): string {
+  const tex = config().cvTex;
+  if (!tex.trim()) throw new Error("CV_TEX is not set; store your cv.tex as an Encore secret");
+  return tex;
 }
 
 const JobAnalysisSchema = z.object({
@@ -45,15 +52,19 @@ const matcher = new Agent({
   name: "Candidate Matcher",
   model: OPENAI_MODEL,
   instructions:
-    "You assess how well a candidate fits a job. Given the candidate profile and the structured job analysis, produce a 0..1 fit score, concrete strengths that map candidate evidence to requirements, and honest gaps. Ground every strength in the provided profile; never fabricate experience.",
+    "You assess how well a candidate fits a job. The candidate's evidence is their LaTeX CV. Given that CV and the structured job analysis, produce a 0..1 fit score, concrete strengths that map CV evidence to the job's requirements, and honest gaps. Ground every strength in the CV; never fabricate experience.",
   outputType: MatchReportSchema,
 });
 
 const writer = new Agent({
-  name: "CV Writer",
+  name: "CV Tailor",
   model: OPENAI_MODEL,
-  instructions:
-    "You write a concise, tailored one-page CV in Markdown for a specific job. Use ONLY facts present in the candidate profile — invent no employers, dates, or achievements. Emphasize the strengths from the match report and mirror the job's keywords where truthful.",
+  instructions: [
+    "You tailor an existing LaTeX CV to a specific job. You are given the owner's complete cv.tex, the job analysis, and the match report.",
+    "Edit ONLY to fit the job: the headline/title, the objective/summary, the ordering and emphasis of skills, and which existing experience bullets are highlighted. Rephrase existing content to mirror the job's keywords where truthful.",
+    "STRICT RULES: Do not invent employers, roles, dates, degrees, or achievements. Every fact must already exist in the provided CV. Keep the same LaTeX document class, packages, and overall structure so it still compiles. Do not add commentary.",
+    "Return ONLY the complete tailored LaTeX document — no Markdown fences, no explanation.",
+  ].join("\n"),
 });
 
 export async function analyzeJobDescription(url: string, jobText: string): Promise<JobAnalysis> {
@@ -65,25 +76,24 @@ export async function analyzeJobDescription(url: string, jobText: string): Promi
 
 export async function matchCandidate(analysis: JobAnalysis): Promise<MatchReport> {
   ensureKey();
-  const input = `Candidate profile:\n${CANDIDATE_PROFILE}\n\nJob analysis (JSON):\n${JSON.stringify(analysis, null, 2)}`;
+  const input = `Candidate CV (LaTeX):\n${baseCv()}\n\nJob analysis (JSON):\n${JSON.stringify(analysis, null, 2)}`;
   const result = await run(matcher, input);
   if (!result.finalOutput) throw new Error("Candidate Matcher returned no output");
   return result.finalOutput;
 }
 
+/** Tailor the owner's cv.tex to the job and compile it to a PDF via the self-hosted service. */
 export async function buildCv(analysis: JobAnalysis, match: MatchReport): Promise<GeneratedCv> {
   ensureKey();
   const input = [
-    `Candidate profile:\n${CANDIDATE_PROFILE}`,
+    `Owner's base CV (cv.tex):\n${baseCv()}`,
     `Job analysis (JSON):\n${JSON.stringify(analysis)}`,
     `Match report (JSON):\n${JSON.stringify(match)}`,
-    `Write the tailored CV now.`,
+    `Produce the tailored cv.tex now.`,
   ].join("\n\n");
   const result = await run(writer, input);
-  const markdown = result.finalOutput?.trim() || "# CV\n\n(No content generated.)";
-  return {
-    fileName: cvFileName(analysis.company),
-    mimeType: "text/markdown",
-    contentBase64: Buffer.from(markdown, "utf8").toString("base64"),
-  };
+  const tex = unwrapCodeFence(result.finalOutput ?? "");
+  if (!tex.includes("\\documentclass")) throw new Error("CV Tailor did not return a full LaTeX document");
+  const contentBase64 = await compileToPdf(tex);
+  return { fileName: cvFileName(analysis.company), mimeType: "application/pdf", contentBase64 };
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cvFileName, stripHtml } from "./pipeline.js";
+import { cvFileName, stripHtml, unwrapCodeFence } from "./pipeline.js";
 
 describe("stripHtml", () => {
   it("drops scripts/styles and tags, decodes entities, collapses whitespace", () => {
@@ -19,10 +19,19 @@ describe("stripHtml", () => {
 });
 
 describe("cvFileName", () => {
-  it("slugs the company and always ends in .md", () => {
-    expect(cvFileName("Acme, Inc.")).toBe("cv-acme-inc.md");
-    expect(cvFileName("careers.acme.com")).toBe("cv-careers-acme-com.md");
-    expect(cvFileName("")).toBe("cv-role.md");
-    expect(cvFileName("!!!")).toBe("cv-role.md");
+  it("slugs the company and always ends in .pdf", () => {
+    expect(cvFileName("Acme, Inc.")).toBe("cv-acme-inc.pdf");
+    expect(cvFileName("careers.acme.com")).toBe("cv-careers-acme-com.pdf");
+    expect(cvFileName("")).toBe("cv-role.pdf");
+    expect(cvFileName("!!!")).toBe("cv-role.pdf");
+  });
+});
+
+describe("unwrapCodeFence", () => {
+  it("removes a ```latex fence but leaves raw LaTeX untouched", () => {
+    const raw = "\\documentclass{article}\\begin{document}Hi\\end{document}";
+    expect(unwrapCodeFence("```latex\n" + raw + "\n```")).toBe(raw);
+    expect(unwrapCodeFence("```\n" + raw + "\n```")).toBe(raw);
+    expect(unwrapCodeFence(raw)).toBe(raw);
   });
 });
