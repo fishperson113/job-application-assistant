@@ -3,13 +3,6 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "scripts": { "dev": "tsx src/main.ts", "typecheck": "tsc --noEmit", "test": "vitest run --passWithNoTests" },
-  "dependencies": {
-    "@corsair-platform/client": "^0.1.0",
-    "@corsair-platform/shared-types": "^0.1.0",
-    "@job-application/ai": "*",
-    "hono": "^4.6.0",
-    "zod": "^3.25.0",
-    "pino": "^9.0.0"
-  }
+  "scripts": { "dev": "encore run", "typecheck": "tsc --noEmit", "test": "vitest run --passWithNoTests" },
+  "dependencies": { "encore.dev": "^1.57.11" }
 }

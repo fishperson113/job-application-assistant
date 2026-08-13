@@ -6,6 +6,7 @@ node_modules/
 dist/
 .next/
 coverage/
+*.tsbuildinfo
 
 # Env / secrets
 .env
@@ -21,3 +22,7 @@ applications/
 .DS_Store
 Thumbs.db
 .vscode/
+encore.gen.go
+encore.gen.cue
+/.encore
+/encore.gen
