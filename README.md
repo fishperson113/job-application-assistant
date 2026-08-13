@@ -15,7 +15,7 @@ Telegram URL -> JobApplication -> JD analysis -> candidate match -> CV/PDF -> Co
 The whole slice is wired and runs on Encore. The intelligence steps are stubbed behind typed interfaces so the flow compiles, deploys, and walks today:
 
 - **Ingest** — a 1-minute cron polls Corsair `getTelegramUpdates`, extracts a URL, creates a `JobApplication`, and acks the sender. Updates are de-duplicated by `update_id`; the Telegram offset is persisted.
-- **Pipeline** (`pipeline.ts`) — `analyzeJobDescription`, `matchCandidate`, `buildCv` are **placeholder stubs**. Replace each with a Claude-backed implementation without touching the orchestrator (`ingest.ts`).
+- **Pipeline** (`agents.ts`) — a three-agent sequence on the **OpenAI Agents SDK** (`@openai/agents`): **Analyst** (job text → structured `JobAnalysis`, zod output) → **Matcher** (profile + analysis → `MatchReport`) → **Writer** (→ tailored one-page CV in Markdown). The job posting is fetched and stripped to text first. Model is `gpt-4o-mini` (`config.ts`). Requires `OPENAI_API_KEY`; the candidate profile in `pipeline.ts` is a **placeholder** to replace with the owner's real evidence.
 - **Delivery** — the (placeholder) CV is uploaded to Google Drive through Corsair, a row is appended to the tracker Google Sheet, and the owner is notified on Telegram — all via the thin Corsair adapter (`corsair.ts`), addressed only by `connectionId`.
 
 State machine (`domain.ts`): `received → analyzing → matched → generating → packaged → delivered` (`failed` on error, retryable from `analyzing`).
@@ -41,6 +41,7 @@ TELEGRAM_CONNECTION_ID      Corsair connection id of the bot, e.g. telegram-bot-
 GOOGLE_CONNECTION_ID        e.g. google-personal
 TRACKER_SPREADSHEET_ID      Google Sheet id used as the job tracker
 OWNER_CHAT_ID               owner's Telegram chat id (for proactive notifications)
+OPENAI_API_KEY              OpenAI key for the agent pipeline
 ```
 
 Set them with `encore secret set --type dev,prod <NAME>` (or via the Encore Cloud dashboard). For local dev, `CORSAIR_URL` defaults to `http://127.0.0.1:4000`.
@@ -56,7 +57,7 @@ git push encore                                # or push to GitHub if you wire t
 
 ## Next steps
 
-1. Replace the `pipeline.ts` stubs with real Claude-backed JD analysis, candidate match, and CV generation.
-2. Render the CV/cover letter to real PDF (LaTeX or a PDF lib) instead of the text placeholder.
-3. Add candidate profile/evidence storage and grounding.
+1. Set a real `OPENAI_API_KEY` and replace the placeholder `CANDIDATE_PROFILE` in `pipeline.ts` with the owner's real profile/evidence.
+2. Render the generated Markdown CV/cover letter to real PDF (LaTeX or a PDF lib) instead of uploading Markdown.
+3. Move the candidate profile into a store (DB) and add grounding/evidence checks.
 4. Duplicate-application detection before creating a new `JobApplication`.
