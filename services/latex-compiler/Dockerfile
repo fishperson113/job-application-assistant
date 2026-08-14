@@ -10,6 +10,9 @@ RUN apt-get update \
 
 WORKDIR /app
 COPY server.mjs .
+# Your CV project (main.tex + preamble + config/ + sections/). Replace ./cv with
+# your real project; gitignore it if you want it out of source control.
+COPY cv ./cv
 
 ENV PORT=8080
 EXPOSE 8080

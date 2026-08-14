@@ -3,6 +3,7 @@ import { config } from "./config.js";
 import { appendSheetRows, getTelegramUpdates, sendTelegramMessage, uploadDriveFile } from "./corsair.js";
 import { extractUrl, newApplicationId, type JobApplication } from "./domain.js";
 import { fetchJobText } from "./pipeline.js";
+import { fetchCvSource } from "./latex.js";
 import { analyzeJobDescription, buildCv, matchCandidate } from "./agents.js";
 import { claimUpdate, createApplication, getOffset, setOffset, updateApplication } from "./store.js";
 
@@ -11,15 +12,15 @@ export async function processApplication(app: JobApplication): Promise<void> {
   const cfg = config();
   try {
     await updateApplication(app.id, { status: "analyzing" });
-    const jobText = await fetchJobText(app.sourceUrl);
+    const [jobText, source] = await Promise.all([fetchJobText(app.sourceUrl), fetchCvSource()]);
     const analysis = await analyzeJobDescription(app.sourceUrl, jobText);
     await updateApplication(app.id, { title: analysis.title, company: analysis.company });
 
     await updateApplication(app.id, { status: "matched" });
-    const match = await matchCandidate(analysis);
+    const match = await matchCandidate(analysis, source.files);
 
     await updateApplication(app.id, { status: "generating" });
-    const cv = await buildCv(analysis, match);
+    const cv = await buildCv(analysis, match, source.files);
     const file = await uploadDriveFile({ connectionId: cfg.googleConnectionId, name: cv.fileName, mimeType: cv.mimeType, contentBase64: cv.contentBase64 });
     await updateApplication(app.id, { status: "packaged", cvDriveFileId: file.id, cvDriveLink: file.webViewLink ?? null });
 

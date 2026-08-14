@@ -1,45 +1,57 @@
 # latex-compiler
 
-Self-hosted LaTeX → PDF service using [Tectonic](https://tectonic-typesetting.github.io/). The Job Application Assistant posts a tailored `cv.tex` here and gets back a PDF, so the CV never leaves infrastructure you control.
+Self-hosted service that holds your **multi-file LaTeX CV project** and compiles it to PDF with [Tectonic](https://tectonic-typesetting.github.io/). The Job Application Assistant reads your tailorable sections, edits them for a job, and posts them back — your CV never leaves infrastructure you control.
+
+## Your CV project
+
+Put your real CV project in `./cv` (this repo ships a sample with the same layout):
+
+```text
+cv/
+  main.tex            entry (\input preamble, config/*, sections/*)
+  preamble.tex
+  config/commands.tex
+  config/personal.tex
+  sections/header.tex summary.tex education.tex skills.tex experience.tex ...
+```
+
+Replace `cv/` with your project. To keep it out of source control, add `services/latex-compiler/cv/` to `.gitignore` — `gcloud run deploy --source` still uploads the local dir to the build.
 
 ## Contract
 
 ```text
 GET  /health   -> 200 "ok"
-POST /compile  body: raw LaTeX (a full \documentclass document)
-               -> 200 application/pdf, or 4xx/5xx with an error message
+GET  /source   -> { entry, tailorable, files: { "sections/summary.tex": "...", ... } }
+POST /compile  body: { overrides: { "sections/summary.tex": "...", ... } }
+               -> 200 application/pdf   (overrides restricted to the tailorable set)
 ```
 
-If `COMPILE_TOKEN` is set, `/compile` requires `Authorization: Bearer <COMPILE_TOKEN>`.
+Configure via env: `ENTRY` (default `main.tex`), `TAILORABLE` (comma list, default
+`sections/header.tex,sections/summary.tex,sections/skills.tex,sections/experience.tex,sections/projects.tex`),
+optional `COMPILE_TOKEN` (then `/source` and `/compile` require `Authorization: Bearer <token>`).
 
 ## Run locally
 
 ```bash
 docker build -t latex-compiler services/latex-compiler
 docker run -p 8080:8080 latex-compiler
-curl -X POST --data-binary @cv.tex http://localhost:8080/compile -o out.pdf
+curl localhost:8080/source
+curl -X POST localhost:8080/compile -H 'content-type: application/json' -d '{"overrides":{}}' -o out.pdf
 ```
 
-## Free hosting (recommended: Google Cloud Run — scale-to-zero, generous free tier)
+## Free hosting (Google Cloud Run — scale-to-zero)
 
 ```bash
 gcloud run deploy latex-compiler \
   --source services/latex-compiler \
-  --region europe-west1 \
-  --allow-unauthenticated \
-  --memory 1Gi --timeout 180
+  --region europe-west1 --allow-unauthenticated \
+  --memory 1Gi --timeout 300
 ```
 
-Cloud Run prints an HTTPS URL. Alternatives: Render (Docker web service), Fly.io, Railway — any host that runs a container and gives an HTTPS URL.
-
-First compile is slower because Tectonic downloads the TeX packages it needs, then caches them for the container's lifetime.
-
-## Wire it into the client
-
-Set the URL (and optionally a token) as Encore secrets on the Job Application app:
+Then point the client at it:
 
 ```bash
-encore secret set --type prod,dev,pr,local LATEX_COMPILE_URL   # e.g. https://latex-compiler-xxxx.run.app
+encore secret set --type prod,dev,pr,local LATEX_COMPILE_URL   # https://latex-compiler-xxxx.run.app
 ```
 
-The client calls `POST <LATEX_COMPILE_URL>/compile`. To require the token, set `COMPILE_TOKEN` on the service and ask to have the client send it (a small addition).
+First compile is slower — Tectonic downloads and caches the TeX packages it needs.
